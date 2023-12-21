@@ -1,6 +1,6 @@
 from django.db import models
 from PIL import Image
-
+from django.contrib.auth.models import User
 
 class Category(models.Model):
     name = models.CharField(max_length=255, unique=True)
@@ -39,3 +39,26 @@ class Product(models.Model):
             if img.height > max_size[1] or img.width > max_size[0]:
                 img.thumbnail(max_size)
                 img.save(self.image.path)
+
+
+class Cart(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+
+    def calculate_total_price(self):
+        total_price = sum(item.product.price * item.quantity for item in self.cartitem_set.all())
+        self.save()
+
+class CartItem(models.Model):
+    cart = models.ForeignKey(Cart, on_delete=models.CASCADE)
+    product = models.ForeignKey('Product', on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField()
+
+
+    def save(self, *args, **kwargs):
+        super(CartItem, self).save(*args, **kwargs)
+        self.cart.calculate_total_price()
+
+    def delete(self, *args, **kwargs):
+        super(CartItem, self).delete(*args, **kwargs)
+        self.cart.calculate_total_price()
+
